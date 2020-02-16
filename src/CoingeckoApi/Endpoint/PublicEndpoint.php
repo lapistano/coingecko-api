@@ -3,8 +3,6 @@
 namespace madmis\CoingeckoApi\Endpoint;
 
 use madmis\CoingeckoApi\Api;
-use madmis\CoingeckoApi\Model\ExchangeRate;
-use madmis\CoingeckoApi\Model\Price;
 use madmis\ExchangeApi\Endpoint\AbstractEndpoint;
 use madmis\ExchangeApi\Endpoint\EndpointInterface;
 use madmis\ExchangeApi\Exception\ClientException;
@@ -16,72 +14,140 @@ use madmis\ExchangeApi\Exception\ClientException;
 class PublicEndpoint extends AbstractEndpoint implements EndpointInterface
 {
     /**
-     * https://www.coingecko.com/coins/currency_exchange_rates.json
-     * @param bool $mapping
-     * @return array|ExchangeRate[]
+     * https://api.coingecko.com/api/v3/simple/supported_vs_currencies
+     *
+     * @return array
      */
-    public function getExchangeRates(bool $mapping = false)
+    public function supportedVsCurrencies()
     {
         $response = $this->sendRequest(
             Api::GET,
-            $this->getApiUrn(['coins', 'currency_exchange_rates.json'])
+            $this->getApiUrn(['simple', 'supported_vs_currencies'])
         );
-
-        if ($mapping) {
-            $base = array_filter($response['rates'], function ($val) {
-                return $val === null;
-            });
-            reset($base);
-            $baseCurrency = $base ? key($base) : Api::QUOTE_BTC;
-
-            $formatted = [];
-            foreach ($response['rates'] as $key => $val) {
-                if ($key !== $baseCurrency) {
-                    $formatted[] = [
-                        'currency' => $key,
-                        'baseCurrency' => $baseCurrency,
-                        'rate' => (float)$val,
-                        'unit' => $response['units'][$key] ?? '',
-                    ];
-                }
-            }
-
-            $response = $this->deserializeItems($formatted, ExchangeRate::class);
-        }
 
         return $response;
     }
 
     /**
-     * https://www.coingecko.com/en/price_charts/bitcoin/usd/24_hours.json
-     * @param string $base base currency {@link \madmis\CoingeckoApi\Api::BASE_}
-     * @param string $quote quote currency {@link \madmis\CoingeckoApi\Api::QUOTE_}
-     * @param string $period data period {@link \madmis\CoingeckoApi\Api::PERIOD_}
-     * @param bool $mapping
-     * @return array|Price[]
-     * @throws ClientException
+     * https://api.coingecko.com/api/v3/simple/supported_vs_currencies
+     *
+     * @return array
      */
-    public function priceCharts(string $base, string $quote, string $period, bool $mapping = false)
+    public function coinsList()
     {
-        if ($period !== Api::PERIOD_MAX) {
-            $urnParams = ['en', 'price_charts', $base, $quote, $period];
-        } else {
-            $urnParams = ['en', 'chart', $base, $quote];
-        }
+        $response = $this->sendRequest(
+            Api::GET,
+            $this->getApiUrn(['coins', 'list'])
+        );
+
+        return $response;
+    }
+
+    /**
+     * https://api.coingecko.com/api/v3/coins/energi
+     *
+     * curl -X GET "https://api.coingecko.com/api/v3/coins/energi
+     *     ?localization=true
+     *     &tickers=true
+     *     &market_data=true
+     *     &community_data=true
+     *     &developer_data=true
+     *     &sparkline=false
+     *
+     * @param $coin
+     * @param string $quote
+     * @return array
+     */
+    public function coinDetails($coin, $quote = Api::QUOTE_USD, $params = [])
+    {
+        $query = array_merge(
+            [
+                'vs_currencies' => $quote,
+            ],
+            $params
+        );
 
         $response = $this->sendRequest(
             Api::GET,
-            sprintf('%s.json', $this->getApiUrn($urnParams))
+            $this->getApiUrn(['coins', $coin]),
+            ['query' => $query]
         );
 
-        if ($mapping) {
-            $response = $this->deserializeItems(array_map(function ($item) {
-                return [
-                    'date' => (float)chunk_split((int)$item[0], 10, '.'),
-                    'price' => $item[1]
-                ];
-            }, $response['stats']), Price::class);
-        }
+        return $response;
+    }
+
+    /**
+     * curl -X GET "https://api.coingecko.com/api/v3/coins/energi/tickers
+     *     ?include_exchange_logo=true
+     *     &page={int}
+     *
+     * @param $coin
+     * @return array
+     */
+    public function coinTickers($coin, $params = [])
+    {
+        $response = $this->sendRequest(
+            Api::GET,
+            $this->getApiUrn(['coins', $coin, 'tickers']),
+            ['query' => $params]
+        );
+
+        return $response;
+    }
+
+    /**
+     * https://api.coingecko.com/api/v3/coins/energi/market_chart?vs_currency=chf&days=max
+     *
+     * @param $coin
+     * @param string $quote
+     * @param string $days
+     *
+     * @return array
+     */
+    public function marketChart($coin, $quote = Api::QUOTE_USD, $days = 'max')
+    {
+        $response = $this->sendRequest(
+            Api::GET,
+            $this->getApiUrn(['coins', $coin, 'market_chart']),
+            [
+                'query' => [
+                    'vs_currency' => $quote,
+                    'days' => $days,
+                ],
+            ]
+        );
+
+        return $response;
+    }
+
+    /**
+     * https://api.coingecko.com/api/v3/simple/price
+     *     ?ids=energi
+     *     &vs_currencies=chf
+     *     &include_24hr_vol=true
+     *     &include_24hr_change=true
+     *     &include_last_updated_at=true
+     *
+     * @param $coin
+     * @param string $quote
+     * @param array $params
+     *
+     * @return array
+     */
+    public function simplePrice($coin, $quote = Api::QUOTE_USD, $params = [])
+    {
+        $query = array_merge([
+            'vs_currencies' => $quote,
+            'ids' => $coin,
+        ],
+            $params
+        );
+
+        $response = $this->sendRequest(
+            Api::GET,
+            $this->getApiUrn(['simple', 'price']),
+            ['query' => $query]
+        );
 
         return $response;
     }

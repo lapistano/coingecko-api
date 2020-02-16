@@ -25,11 +25,11 @@ class CoingeckoApi
     private $endpointFactory;
 
     /**
-     * @param string $baseUri example: https://www.coingecko.com
+     * @param string $baseUri example: https://api.coingecko.com/api/v3
      * @param string $apiUrn example: /
      * @param array $options extra parameters
      */
-    public function __construct(string $baseUri = 'https://www.coingecko.com', string $apiUrn = '/', array $options = [])
+    public function __construct(string $baseUri = 'https://api.coingecko.com/api/v3', string $apiUrn = '/', array $options = [])
     {
         $this->client = new GuzzleClient($baseUri, $apiUrn, $options);
         $this->endpointFactory = new EndpointFactory();
@@ -60,5 +60,4 @@ class CoingeckoApi
             ->endpointFactory
             ->getEndpoint(PublicEndpoint::class, $this->client);
     }
-
 }
